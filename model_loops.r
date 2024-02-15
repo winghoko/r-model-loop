@@ -79,6 +79,50 @@ model_loop <- function(data, categories, formula, modeler = glm, ...) {
   }
 }
 
+#' Apply a transformer function on each model in the (possibly nested)
+#' model list, and return the transformed results in a (possibly nested)
+#' list with the same structure as the input model list
+#'
+#' @param model_list - The list (nested or flattened) of models originated
+#'   from `model_loop()`.
+#' @param transformer - The function used to transform the models, e.g., `aov`.
+#'   The modeler should take the model as its first argument.
+#' @param ... - Additional arguments are passed to the transformer.
+#' @param .set_attributes - Whether the "category_keys" and "category_values"
+#'   attributes should be set on the transformed model objects.
+#' @returns a (possibly nested) list containing transformed model objects
+#'   returned by the modeler. The structures and names of the (flat or nested)
+#'   list mirrors that of the original model list. In addition, if
+#'   .set_attribute is true, each transformed object will also has the
+#'   attributes "category_keys" and "category_values" mirrored from the
+#'   original model list.
+#'
+transform_loop <- function(
+  model_list, transformer, ..., .set_attributes = TRUE
+) {
+
+  if (is.null(attr(model_list, "category_keys"))) { # recurse case
+
+    out_names <- names(model_list)
+    out_list <- list()
+    for (model in model_list){
+      in_list <- transform_loop(model, transformer, ..., .set_attributes)
+      out_list <- append(out_list, list(in_list))
+    }
+    names(out_list) <- out_names
+    return(out_list)
+
+  } else { # base case
+
+    out <- transformer(model_list, ...)
+    if (.set_attributes) {
+      attr(out, "category_keys") <- attr(model_list, "category_keys")
+      attr(out, "category_values") <- attr(model_list, "category_values")
+    }
+    return(out)
+  }
+}
+
 #' Convert the nested list of models returned by `model_loop()` into a
 #' flattened list.
 #'
