@@ -85,7 +85,7 @@ model_loop <- function(data, categories, formula, modeler = glm, ...) {
 #' NOTE: In all subsequent functions (e.g., `predict_loop()`, the flattened
 #' list will work just as the nested list do.
 #'
-#' @param model_list - The nested list of models returned by `model_loop()`
+#' @param model_list - The list of models originated from `model_loop()`.
 #' @param name_sep - The separator used to join all the category values into
 #'   a single indexing name.
 #' @param out_list - The list to append the models object to. If NULL, a new
@@ -249,13 +249,13 @@ predict_loop <- function(
 #'   precisely, a object that can cbind() with a data.frame to produce another
 #'   data.frame). The column names of this data.frame should be consistent
 #'   regardless the model object from the list it operates on.
-#' @param categories - The categories for which models from `model_list` with
-#'   a different value from that of the `base_model` should NOT be compared
-#'   with the base model.
+#' @param groupings - The groupings under which the comparisons are grouped.
+#'    Specifically, if a category is used in grouping, then two models are
+#'    compared only if their corresponding category values agree.
 #' @param out_df - The data.frame for which the comparison data will be
 #'   appended to. The structure of the appending data.frame consists of
 #'   columns showing category values that are fixed (i.e., columns matching
-#'   the `categories` argument), followed by categories that are compared
+#'   the `groupings` argument), followed by categories that are compared
 #'   between model in `model_list` with `base_model` (these are expanded into
 #'   pairs: one for model in `model_list` and another for `base_model`),
 #'   followed by the data.frame returned by the compare function.
@@ -272,7 +272,7 @@ predict_loop <- function(
 #'   compared, followed by the entries returned by `cmp_func`.
 #'
 compare_loop <- function(
-  model_list, base_model, cmp_func, categories,
+  model_list, base_model, cmp_func, groupings,
   out_df = NULL, suffix = c("_1", "_2"), out_names = NULL, ...
 ) {
 
@@ -280,7 +280,7 @@ compare_loop <- function(
 
     for (model in model_list){
       out_df <- compare_loop(
-        model, base_model, cmp_func, categories, out_df, ...
+        model, base_model, cmp_func, groupings, out_df, ...
       )
     }
     return(out_df)
@@ -294,7 +294,7 @@ compare_loop <- function(
     cat_idx <- integer(0)
     fact_idx <- integer(0)
     for (i in seq_along(keys)) {
-      if (keys[[i]] %in% categories) {
+      if (keys[[i]] %in% groupings) {
         if (values_1[[i]] != values_2[[i]]) {
           return(out_df) # early return for unmatched case
         } else {
@@ -340,7 +340,7 @@ compare_loop <- function(
 }
 
 #' Compare each pair of model objects from `model_list` for which the
-#' values of the each category in the `categories` argument agrees.
+#' values of the each category in the `groupings` argument agrees.
 #'
 #' @param model_list - The list (nested or flattened) of models originated
 #'   from `model_loop()`.
@@ -351,8 +351,9 @@ compare_loop <- function(
 #'   a data.frame (or more precisely, a object that can cbind() with a
 #'   data.frame to produce another data.frame). The column names of this
 #'   data.frame should be consistent regardless the models it operates on.
-#' @param categories - The categories for which models with different values
-#'   should NOT be cross compared.
+#' @param groupings - The categories under which the comparisons are grouped.
+#'    Specifically, if a category is used in grouping, then two models are
+#'    compared only if their corresponding category values agree.
 #' @param cmp_models - The models to be cross-compared to the set of models
 #'   in `model_list`. Defaults to `model_list` if NULL. (This argument is
 #'   mainly intended to support the recursive calls used in this function;
@@ -362,8 +363,8 @@ compare_loop <- function(
 #'   lists should have consistent `category_keys` and `category_values`.
 #' @param out_df - The data.frame for which the comparison data will be
 #'   appended to. The structure of the appending data.frame consists of
-#'   columns showing category values from the `categories` argument, followed
-#'   by categories that are cross compared (these are expanded into
+#'   columns showing grouping category values from the `groupings` argument,
+#'   followed by categories that are cross compared (these are expanded into
 #'   pairs: one for each model), followed by the data.frame returned by the
 #'   compare function. (This argument is mainly intended to support the
 #'   recursive calls used in this function; the default (= NULL) is suitable
@@ -374,12 +375,12 @@ compare_loop <- function(
 #' @param out_names - Optionally override the column names returned by the
 #'   extractor. If NULL the column names produced by `cmp_func` is used.
 #' @param ... - Additional arguments are passed to `cmp_func`.
-#' @returns a data.frame, consisting of columns showing category values that
-#'   are not compared, followed by pairs of categories values that are
-#'   compared, followed by the entries returned by `cmp_func`.
+#' @returns a data.frame, consisting of columns showing grouping category 
+#'   values, followed by pairs of categories values that are compared,
+#'   followed by the entries returned by `cmp_func`.
 #'
 cross_compare_loop <- function(
-  model_list, cmp_func, categories, cmp_models = NULL, out_df = NULL,
+  model_list, cmp_func, groupings, cmp_models = NULL, out_df = NULL,
   suffix = c("_1", "_2"), out_names = NULL, ...
 ) {
 
@@ -389,7 +390,7 @@ cross_compare_loop <- function(
 
     for (model in cmp_models){
       out_df <- cross_compare_loop(
-        model_list, cmp_func, categories, model, out_df,
+        model_list, cmp_func, groupings, model, out_df,
         suffix, out_names, ...
       )
     }
@@ -398,7 +399,7 @@ cross_compare_loop <- function(
   } else { # base step
 
     out_df <- compare_loop(
-      model_list, cmp_models, cmp_func, categories, out_df,
+      model_list, cmp_models, cmp_func, groupings, out_df,
       suffix, out_names, ...
     )
     return(out_df)
@@ -406,7 +407,7 @@ cross_compare_loop <- function(
 }
 
 #' Compare each combination of model objects from `model_list` for which the
-#' values of the each category in the `categories` argument agrees. Here
+#' values of the each category in the `groupings` argument agrees. Here
 #' combination means that the comparison will run only on one of (a,b) and
 #' (b,a), and never on (a,a).
 #'
@@ -419,12 +420,13 @@ cross_compare_loop <- function(
 #'   a data.frame (or more precisely, a object that can cbind() with a
 #'   data.frame to produce another data.frame). The column names of this
 #'   data.frame should be consistent regardless the models it operates on.
-#' @param categories - The categories for which models with different values
-#'   should NOT be cross compared.
+#' @param groupings - The categories under which the comparisons are grouped.
+#'    Specifically, if a category is used in grouping, then two models are
+#'    compared only if their corresponding category values agree.
 #' @param out_df - The data.frame for which the comparison data will be
 #'   appended to. The structure of the appending data.frame consists of
-#'   columns showing category values from the `categories` argument, followed
-#'   by categories that are cross compared (these are expanded into
+#'   columns showing grouping category values from the `groupings` argument,
+#'   followed by categories that are cross compared (these are expanded into
 #'   pairs: one for each model), followed by the data.frame returned by the
 #'   compare function. (This argument is mainly intended to support the
 #'   recursive calls used in this function; the default (= NULL) is suitable
@@ -435,12 +437,12 @@ cross_compare_loop <- function(
 #' @param out_names - Optionally override the column names returned by the
 #'   extractor. If NULL the column names produced by `cmp_func` is used.
 #' @param ... - Additional arguments are passed to `cmp_func`.
-#' @returns a data.frame, consisting of columns showing category values that
-#'   are not compared, followed by pairs of categories values that are
-#'   compared, followed by the entries returned by `cmp_func`.
+#' @returns a data.frame, consisting of columns showing grouping category 
+#'   values, followed by pairs of categories values that are compared, 
+#'   followed by the entries returned by `cmp_func`.
 #'
 cross_compare_loop2 <- function(
-  model_list, cmp_func, categories, out_df = NULL,
+  model_list, cmp_func, groupings, out_df = NULL,
   suffix = c("_1", "_2"), out_names = NULL, ...
 ) {
 
@@ -458,7 +460,7 @@ cross_compare_loop2 <- function(
   for (i in seq(1, n - 1)) {
     for (j in seq(i + 1, n)) {
       out_df <- compare_loop(
-        model_list[[i]], model_list[[j]], cmp_func, categories, out_df,
+        model_list[[i]], model_list[[j]], cmp_func, groupings, out_df,
         suffix, out_names, ...
       )
     }
