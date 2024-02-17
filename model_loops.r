@@ -101,7 +101,7 @@ transform_loop <- function(
   model_list, transformer, ..., .set_attributes = TRUE
 ) {
 
-  if (is.null(attr(model_list, "category_keys"))) { # recurse case
+  if (is.null(attr(model_list, "category_values"))) { # recurse case
 
     out_names <- names(model_list)
     out_list <- list()
@@ -144,7 +144,7 @@ flatten_model_list <- function(model_list, name_sep = ":", out_list = NULL) {
 
   if (is.null(out_list)) out_list <- list()
 
-  if (is.null(attr(model_list, "category_keys"))) { # recurse step
+  if (is.null(attr(model_list, "category_values"))) { # recurse step
 
     for (model in model_list){
       out_list <- flatten_model_list(model, name_sep, out_list)
