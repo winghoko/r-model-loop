@@ -1,7 +1,7 @@
-#' WARNING: internal function. May change without notice.
-#'
-#' Recursively add a new value `value` to all objects in in_list first having
-#' the attribute list named `label`.
+#' Recursively prepend a new value `value` to the attribute list named `label`
+#' to all objects in the possibly nested `in_list` first having an attribute
+#' list named `label`. NOTE: no check is performed to see if the attribute
+#' `label` is actually a list.
 #'
 #' @param in_list - The list to recursively descend into.
 #' @param label - The name of the attribute to be modified. The attribute is
@@ -10,14 +10,14 @@
 #' @param value - The value to prepend to the attribute list.
 #' @returns a new list whose objects have the attributes modified.
 #'
-.recurse_prepend_attr <- function(in_list, label, value) {
+recurse_prepend_attr <- function(in_list, label, value) {
 
   if (is.null(attr(in_list, label))) { # recurse case
     in_attrs <- attributes(in_list)
     new_list <- list() # everything is immutable in R, so a new list is needed
     for (sub_list in in_list){
       new_list <- append(new_list, list(
-        .recurse_prepend_attr(sub_list, label, value)
+        recurse_prepend_attr(sub_list, label, value)
       ))
     }
     mostattributes(new_list) <- in_attrs # copy all "safe" attributes
@@ -26,6 +26,38 @@
   } else { # base case
 
     attr(in_list, label) <- append(value, attr(in_list, label))
+    return(in_list)
+  }
+}
+
+#' Recursively append a new value `value` to the attribute list named `label`
+#' to all objects in the possibly nested `in_list` first having an attribute
+#' list named `label`. NOTE: no check is performed to see if the attribute
+#' `label` is actually a list.
+#'
+#' @param in_list - The list to recursively descend into.
+#' @param label - The name of the attribute to be modified. The attribute is
+#'   assumed to be a list or vector (more specifically, to be `append`
+#'   operable).
+#' @param value - The value to append to the attribute list.
+#' @returns a new list whose objects have the attributes modified.
+#'
+recurse_append_attr <- function(in_list, label, value) {
+
+  if (is.null(attr(in_list, label))) { # recurse case
+    in_attrs <- attributes(in_list)
+    new_list <- list() # everything is immutable in R, so a new list is needed
+    for (sub_list in in_list){
+      new_list <- append(new_list, list(
+        recurse_append_attr(sub_list, label, value)
+      ))
+    }
+    mostattributes(new_list) <- in_attrs # copy all "safe" attributes
+    return(new_list)
+
+  } else { # base case
+
+    attr(in_list, label) <- append(attr(in_list, label), value)
     return(in_list)
   }
 }
@@ -70,8 +102,8 @@ model_loop <- function(data, categories, formula, modeler = glm, ...) {
     for (val in cat_values){
       data <- all_data[all_data[[cat_used]] == val, ] # subset-ing
       in_list <- model_loop(data, cat_remain, formula, modeler, ...)
-      in_list <- .recurse_prepend_attr(in_list, "category_keys", cat_used)
-      in_list <- .recurse_prepend_attr(in_list, "category_values", val)
+      in_list <- recurse_prepend_attr(in_list, "category_keys", cat_used)
+      in_list <- recurse_prepend_attr(in_list, "category_values", val)
       out_list <- append(out_list, list(in_list))
     }
     names(out_list) <- as.character(cat_values)
