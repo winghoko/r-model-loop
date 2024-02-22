@@ -25,8 +25,8 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="1.0771772"
-     inkscape:cx="693.47923"
-     inkscape:cy="379.69612"
+     inkscape:cx="693.94339"
+     inkscape:cy="305.42793"
      inkscape:window-width="1920"
      inkscape:window-height="1009"
      inkscape:window-x="-8"
@@ -82,41 +82,41 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:4.93889px;font-family:sans-serif;-inkscape-font-specification:sans-serif;text-align:start;text-anchor:start;fill:#000000;stroke:none;stroke-width:0.705556;stroke-linejoin:bevel"
-       x="156.80469"
+       x="157.54156"
        y="28.019506"
        id="text1134"><tspan
          sodipodi:role="line"
          id="tspan1132"
          style="font-size:4.93889px;text-align:start;text-anchor:start;stroke-width:0.705556"
-         x="156.80469"
+         x="157.54156"
          y="28.019506">data.frame</tspan></text>
     <rect
        style="fill:#00ff00;stroke:#000000;stroke-width:0.529167;stroke-linejoin:bevel;stroke-dasharray:none"
        id="rect1136"
        width="54.037838"
        height="11.053198"
-       x="125.99887"
+       x="126.73576"
        y="34.483471"
        ry="0" />
     <text
        xml:space="preserve"
        style="font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;text-anchor:middle;fill:#00ffff;stroke:#000000;stroke-width:0.705556;stroke-linejoin:bevel"
-       x="153.80168"
+       x="154.53856"
        y="41.50386"
        id="text1192"><tspan
          sodipodi:role="line"
          id="tspan1190"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:monospace;-inkscape-font-specification:monospace;text-align:center;text-anchor:middle;fill:#000000;stroke:none;stroke-width:0.705556"
-         x="153.80168"
+         x="154.53856"
          y="41.50386">model_loop()</tspan></text>
     <path
        style="fill:#00ff00;stroke:#000000;stroke-width:1.76389;stroke-linejoin:bevel;stroke-dasharray:none;marker-end:url(#TriangleStart)"
-       d="m 153.02162,23.40135 v 7.601204"
+       d="m 153.7585,23.40135 v 7.601204"
        id="path1307"
        sodipodi:nodetypes="cc" />
     <path
        style="fill:none;stroke:#000000;stroke-width:1.76389;stroke-linejoin:bevel;stroke-dasharray:none;marker-end:url(#TriangleStart)"
-       d="m 153.02162,46.327663 v 7.60121"
+       d="m 153.7585,46.327663 v 7.60121"
        id="path1653"
        sodipodi:nodetypes="cc" />
     <rect
@@ -141,13 +141,13 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:4.93889px;font-family:sans-serif;-inkscape-font-specification:sans-serif;text-align:end;text-anchor:end;fill:#000000;stroke:none;stroke-width:0.705556;stroke-linejoin:bevel"
-       x="158.27615"
+       x="159.01303"
        y="54.874599"
        id="text1771"><tspan
          sodipodi:role="line"
          id="tspan1769"
          style="font-size:4.93889px;text-align:start;text-anchor:start;stroke-width:0.705556"
-         x="158.27615"
+         x="159.01303"
          y="54.874599">(nested) list</tspan></text>
     <rect
        style="fill:#00ff00;stroke:#000000;stroke-width:0.529167;stroke-linejoin:bevel;stroke-dasharray:none"
@@ -607,5 +607,45 @@
          style="font-size:4.93889px;stroke-width:0.705556;text-anchor:middle;text-align:center"
          x="280.2413"
          y="175.39545">data.frame</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.76389;stroke-linejoin:bevel;stroke-dasharray:1.76389, 1.76389;stroke-dashoffset:0;marker-end:url(#TriangleStart)"
+       d="M 132.19137,21.228263 116.69396,32.512615"
+       id="path949"
+       sodipodi:nodetypes="cc" />
+    <rect
+       style="fill:#00ff00;stroke:#000000;stroke-width:0.529167;stroke-linejoin:bevel;stroke-dasharray:none"
+       id="rect951"
+       width="54.037838"
+       height="11.053198"
+       x="59.18845"
+       y="34.483471"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:5.64444px;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;text-anchor:middle;fill:#00ffff;stroke:#000000;stroke-width:0.705556;stroke-linejoin:bevel"
+       x="86.991257"
+       y="41.50386"
+       id="text955"><tspan
+         sodipodi:role="line"
+         id="tspan953"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:monospace;-inkscape-font-specification:monospace;text-align:center;text-anchor:middle;fill:#000000;stroke:none;stroke-width:0.705556"
+         x="86.991257"
+         y="41.50386">model_loop2()</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:4.93889px;font-family:sans-serif;-inkscape-font-specification:sans-serif;text-align:start;text-anchor:start;fill:#000000;stroke:none;stroke-width:0.705556;stroke-linejoin:bevel"
+       x="61.992836"
+       y="31.703905"
+       id="text1061"><tspan
+         sodipodi:role="line"
+         id="tspan1059"
+         style="font-size:4.93889px;text-align:start;text-anchor:start;fill:#008000;stroke-width:0.705556"
+         x="61.992836"
+         y="31.703905">dependency: rlang</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.76389;stroke-linejoin:bevel;stroke-dasharray:1.76389, 1.76389;stroke-dashoffset:0;marker-end:url(#TriangleStart)"
+       d="m 114.75188,46.773426 21.34658,10.547472"
+       id="path1261"
+       sodipodi:nodetypes="cc" />
   </g>
 </svg>
