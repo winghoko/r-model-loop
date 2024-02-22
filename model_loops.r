@@ -111,6 +111,79 @@ model_loop <- function(data, categories, formula, modeler = glm, ...) {
   }
 }
 
+#' A variation of `model_loop()` that requires the `rlang` package in an
+#' attempt to generate modeler calls that better resemble interactive calls,
+#' thus making the resulting model object more informative and easier to
+#' manipulate.
+#'
+#' @param data - The data.frame containing the data to be subsetted and
+#'   modeled.
+#' @param categories - The categories whose distinct values are used to
+#'   subset the data.
+#' @param formula - R formula object. The formula to be used in modeling.
+#' @param modeler - The function used to perform the modeling, e.g., `lm`
+#'   and `glm`. The modeler should take `formula` as the first argument
+#'   and subsetted `data` as second argument.
+#' @param ... - Additional arguments are passed to the modeler.
+#' @returns a (possibly nested) list containing model objects returned
+#'   by the modeler. Each model object has 2 additional attributes:
+#'   `category_keys` containing a copy of `categories`, and `category_values`
+#'   containing the particular values of the said keys. (These two attributes
+#'   are used in subsequent functions. Avoid tempering them). In addition,
+#'   the nested list is named by the value the category that the list is
+#'   enumerating through.
+#'
+model_loop2 <- function(data, categories, formula, modeler = glm, ...) {
+
+  d_expr <- rlang::enexpr(data)
+  f_expr <- rlang::enexpr(formula)
+  m_expr <- rlang::enexpr(modeler)
+  e_exprs <- rlang::enexprs(...)
+  schema <- unique(data[categories])
+
+  if (nrow(schema) == 0 || ncol(schema) == 0) {
+    call_expr <- rlang::expr((!!m_expr)(!!f_expr, !!d_expr, !!!e_exprs))
+    model <- eval(call_expr)
+    return(list(model))
+  }
+
+  out_list <- list()
+  n <- length(categories)
+  m <- nrow(schema)
+  if (n == 1) {
+    for (i in seq(1, m)) {
+      i_expr <- rlang::expr(
+        (!!d_expr)[[(!!categories[[1]])]] == (!!schema[[i, 1]])
+      )
+      dd_expr <- rlang::expr((!!d_expr)[!!i_expr, ])
+      call_expr <- rlang::expr((!!m_expr)(!!f_expr, !!dd_expr, !!!e_exprs))
+      model <- eval(call_expr)
+      attr(model, "category_keys") <- categories
+      attr(model, "category_values") <- as.list(schema[i, ])
+      out_list <- append(out_list, list(model))
+    }
+  } else {
+    for (i in seq(1, m)){
+      i_expr <- rlang::expr(
+        (!!d_expr)[[(!!categories[[1]])]] == (!!schema[[i, 1]])
+      )
+      for (j in seq(2, n)){
+        i_expr <- rlang::expr(
+          !!i_expr & (!!d_expr)[[(!!categories[[j]])]] == (!!schema[[i, j]])
+        )
+      }
+      dd_expr <- rlang::expr((!!d_expr)[!!i_expr, ])
+      call_expr <- rlang::expr((!!m_expr)(!!f_expr, !!dd_expr, !!!e_exprs))
+      model <- eval(call_expr)
+      attr(model, "category_keys") <- categories
+      attr(model, "category_values") <- as.list(schema[i, ])
+      out_list <- append(out_list, list(model))
+    }
+  }
+  out_list <- nest_model_list(out_list)
+  return(out_list)
+}
+
 #' Apply a transformer function on each model in the (possibly nested)
 #' model list, and return the transformed results in a (possibly nested)
 #' list with the same structure as the input model list
@@ -158,7 +231,7 @@ transform_loop <- function(
 #' Convert the nested list of models returned by `model_loop()` into a
 #' flattened list.
 #'
-#' NOTE: In all subsequent functions (e.g., `predict_loop()`, the flattened
+#' NOTE: In all subsequent functions (e.g.), `predict_loop()`, the flattened
 #' list will work just as the nested list do.
 #'
 #' @param model_list - The list of models originated from `model_loop()`.
@@ -192,6 +265,60 @@ flatten_model_list <- function(model_list, name_sep = ":", out_list = NULL) {
     names(out_list) <- append(old_names, new_name)
     return(out_list)
   }
+}
+
+#' Recursively insert a model into a nested list of models. Each level of
+#' the nested list is labeled by the corresponding category value. Whenever
+#' a category value is missing in the structure of the nested list, a new
+#' (sub)list is created within the nested list.
+#'
+#' @param model - The model to insert.
+#' @param cat_values - The category values that identify the model.
+#' @param in_list - The nested list to recursively insert into.
+#' @returns a new nested list with the model inserted.
+#'
+nest_model_into <- function(model, cat_values, in_list) {
+
+  n <- length(cat_values)
+  if (n == 0) {
+    return(list(model))
+  } else if (n == 1) {
+    cat_val <- as.character(cat_values[[1]])
+    in_list[cat_val] <- list(model)
+    return(in_list)
+  } else {
+    cat_val <- as.character(cat_values[[1]])
+    cat_remain <- cat_values[-1]
+    if (cat_val %in% names(in_list)) {
+      in_list[cat_val] <- list(
+        nest_model_into(model, cat_remain, in_list[[cat_val]])
+      )
+    } else {
+      in_list[cat_val] <- list(
+        nest_model_into(model, cat_remain, list())
+      )
+    }
+    return(in_list)
+  }
+}
+
+#' Convert a flattened model list to a nested model list, so that at each level
+#' the name of the elements reflect the values of the corresponding categories
+#'
+#' @param model_list - The flattened model list.
+#' @returns a new nested list containing the same models.
+#'
+nest_model_list <- function(model_list) {
+
+  model_list <- flatten_model_list(model_list) # defensive flattening
+
+  out_list <- list()
+  for (model in model_list){
+    out_list <- nest_model_into(
+      model, attr(model, "category_values"), out_list
+    )
+  }
+  return(out_list)
 }
 
 #' Extract (and possibly compute) information from each of the model object
