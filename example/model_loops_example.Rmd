@@ -1,0 +1,251 @@
+---
+title: "Model Loops Example"
+author: "Wing-Ho Ko"
+date: "2024-03-06"
+output: 
+  html_document
+---
+
+In this rmarkdown document we illustrate the tools in `model_loops.r` using heat block data on two species of sea snails. In brief, 2 species of sea snails are exposed to a variety of ambient temperature and their survival (dead versus alive) are recorded. For one species (_Littoraria ardouiniana_), the experiment was performed on samples of 2 distinct ages. In addition, some of the experiments are replicated a second time. This dataset is included in the repo as `sample_lt50_data.csv`.
+
+The main categories we use to divide up the data are thus species (`Species`) and age (`Age`), and to smaller extent the replication (`Rep`). Our explanatory variable will be the temperature (`Temp`), and our response variable will be the binary outcomes `Alive` and `Dead`.
+
+## Setting up
+
+Load the source codes:
+
+```{r load_script}
+source("../model_loops.r")
+```
+
+Load the `sample_lt50_data.csv` file used in this example as a data.frame.
+
+```{r load_data}
+toxData <- read.csv("sample_lt50_data.csv")
+head(toxData)
+```
+
+## Creating list of models
+
+Our goal is analyze how temperature (`Temp`) affects the survival of the sea snails. If we band all the data together, this can be done by a single `glm()` call. However, we expect sea snails of different age and species to behave differently. So we wish to perform one *separate* fit for each distinct age and species, which can be achieved using the `model_loop()` function, as follows:
+
+```{r model_loop}
+models <- model_loop(toxData, c("Species", "Age"),
+    cbind(Alive, Dead) ~ log10(Temp), modeler=glm, family=binomial
+)
+```
+
+The first (`toxData`), third (`cbind(Alive, Dead) ~ log10(Temp)`), and fifth (`family=binomial`) arguments in the above call are similar to those of the `glm()` function. What's new is the second argument, which tells `model_loop()` which columns in the data.frame should be used to subset the data, and the fourth argument, which specify the modeling function to use. In general, when a different modeling function is used, the arguments after `modeler` are passed directly to the modeling function. Also, the default modeler is `glm`, so we may actually omit the fourth argument above.
+
+Let's look at the `models` variable, the result returned by `model_loop()`
+
+```{r print_models}
+print(models)
+```
+
+As one may infer, `models` is a list of list of fitted models. The first index corresponds to the species of sea snail, while the second index corresponds to its age. This allow ones to extract a particular model, e.g.,
+
+```{r checkout_one}
+base_model <- models[["Littoraria melanostoma"]][["3"]]
+print(base_model)
+```
+
+While it is not apparent, the information about the values of each category (in this case, the species and age corresponding to a particular model) is stored in each model object using the attribute interface. For example,[^1]
+
+```{r check_attributes}
+attr(base_model, "category_values")
+```
+
+Similarly, the column names that corresponds to the category values (`Species` and `Age` in our example) can be extracted via, e.g., `attr(base_model, "category_keys")`
+
+While the nested list structure works fine for all the functions defined in the `model_loops.r`, for other purposes it may be better to work with a fattened list instead. The flattening can be performed by `flatten_model_list()`:
+
+```{r flatten_models}
+models2 <- flatten_model_list(models)
+print(models2)
+```
+
+Note that the result is a single named list, with names produced by concatenation of the individual category values. The character used for the concatenation can be customized by the `name_sep` argument of `flatten_model_list()`.
+
+## Extracting information and making predictions
+
+Oftentimes, a model object produced by a modeling function is only an intermediate step of the analysis. For example, once we have a model of survival in our example, we would like to *predict* the proportion survived as a function of temperatures. We may also want to extract information from the model for further use. In  `model_loops.r`, the `predict_loop()` and `extract_loop()` functions are provided for these purposes, respectively.
+
+First consider `extract_loop()`. Let's say we want to compare the fit parameters between the models. If we have a single model, the fit parameter can be extracted using the `coef()` function:
+
+```{r coef}
+base_coef <- coef(base_model)
+print(base_coef)
+```
+
+To do this for all models, we can use the `extract_loop()` function. However, we also need to write a wrapper around `coef()`, since it returns a named vector, which corresponds to multiple rows in a data.frame rather than multiple columns. So we write a wrapper that cast the output into the desired form:
+
+```{r coef_wrapper}
+coef_func <- function(x){
+  return(as.list(coef(x)))
+}
+```
+
+Now we can use this function with `extract_loop()`:
+
+```{r extract_loop, max.print=30}
+extract_loop(models, coef_func)
+```
+
+Of course, in a glm it may be difficult to tie the fit parameters back to prediction. For a single model, the `predict()` function can be used to generate predictions, and for our model list we need to loop through the prediction using `predict_loop()`.
+
+First, we generate a list of temperature we want to make prediction on:
+
+```{r new_data}
+new_temp <- data.frame("Temp" = seq(26, 56, 3))
+```
+
+Then we run the prediction loop:
+
+```{r predict_loop}
+pred <- predict_loop(models, new_temp, predictor=predict, type="response")
+print(pred)
+```
+
+We note that the default predictor is `predict`, so we can actually omit the `predictor` argument in the above. Moreover, the `type = "response"` argument is an example of additional arguments that are automatically passed to the predictor function.
+
+Just like in the case of `extract_loop()`, sometimes we also need to write a wrapper around a prediction function we use. An example is the `add_ci()` function from the `ciTools` package, which compute confidence intervals in addition to the predicted value. The `add_ci()` function takes the data.frame as its first argument rather than the second, so we'll have to write a wrapper like so (we also omit the first column of the output, since it is just a replication of the `new_temp` data.frame):
+
+```{r ci_wrapper}
+ci_func <- function(model, new_data, ...){
+    out <- ciTools::add_ci(new_data, model, ...)
+    return(out[-1])
+}
+```
+
+Now we can again apply the prediction_loop:
+
+```{r predict_ci}
+pred_ci <- predict_loop(models, new_temp, ci_func, alpha=0.10)
+print(pred_ci)
+```
+
+## Transforming models before extraction and prediction
+
+Sometimes, the information we needed are not directly accessible from the models, but are found in objects _derived_ from the models. To extract such information, we first need to transform the model list into list of derived object. This is done via the `transform_loop()` function.
+
+For example, in the case of linear regression on categorical explanatory variables, it is useful to perform analysis of variance (ANOVA) based on the regression result. While An ANOVA is somewhat bogus in the present case, we will still perform the analysis as an example of applying `transform_loop()`.
+
+So, let's suppose we want perform ANOVA on each model and extract the deviance explained and residual deviance. We first have to transform each glm model object into an ANOVA object, and then extract the desired parameters. For the first step, we apply `transform_loop()` like so:
+
+```{r transform_loop}
+aov_list <- transform_loop(models, anova)
+```
+
+Here the first argument (`models`) is the list of models, while the second argument (`anova`) is the transformer function to apply on each model. Similar to `model_loop()`, the `tranform_loop()` call can include additional named arguments, which will be passed to the transformer function.
+
+The result of the transform, `aov_list`, is a (nested) list of transformed objects (in this case, ANOVA objects). Moreover, the nested list retains the same structure as the input `models` list:
+
+```{r checkout_aov}
+aov_list
+```
+
+Now we can write an extractor to extract the explained and residual deviance, and feed it into `extract_loop()` to get what we want:
+
+```{r extract_after_transform}
+extract_dev <- function(aov_obj){
+  out <- list(aov_obj$Deviance[[2]], aov_obj$`Resid. Dev`[[2]])
+  names(out) <- c("Deviance", "Resid. Dev")
+  return (out)
+}
+
+aov_df <- extract_loop(aov_list, extract_dev)
+
+print(aov_df)
+```
+
+In similar manner, one may also perform a `transform_loop()` followed by a `predict_loop()`.
+
+## Cross comparison between models
+
+Another analysis one might want to do with a collection of models is to compare between them. For this purpose, `model_loop.r` provide two functions `compare_loop()` and `cross_compare_loop()`. For both of these, we need to supply a function to perform the comparison. A meaningful comparison in our example is the ratio test, which compares lethal dosage (the "toxin" here is just temperature). Such test is implemented by the `ratio_test()` function in the `ecotox` package. As with some of the previous cases, we need to write a wrapper around `ratio_test()` so that the compare function returns a data.frame (for presentation purpose we also strip a column to make things simpler).
+
+```{r ecotox_wrapper}
+ecotox_test <- function(m1, m2, ...){
+    out <- as.data.frame(ecotox::ratio_test(m1, m2, ...));
+    return(out[c(-1)]);
+}
+```
+
+Of the two loop functions, the `compare_loop()` is the simpler one, since it compares the list of model to a chosen model (we'll use the `base_model` defined above for this chosen model). Now, while we subset the data using both species and age, we may find cross-age comparison not particularly insightful, and would like to compare only the subset of models in which the age is the same as the chosen model. We do so by supplying the `Age` to the `categories` argument of `compare_loop()`. The full function call is:[^2]
+
+```{r compare_loop}
+cmp_chosen <- compare_loop(models, base_model,
+    cmp_func=ecotox_test, groupings="Age",
+    percentage=c(50, 90), type="logit"
+)
+
+print(cmp_chosen)
+```
+
+Now, instead of comparing the list of model with a chosen model, it may be useful to cross-compare between all the models from the list (again, we will exclude cross-age comparison in what follows). The `cross_compare_loop()` is designed for such purpose:
+
+```{r cross_compare_loop}
+cmp_all <- cross_compare_loop(models, cmp_func=ecotox_test, 
+  groupings="Age", percentage=50, type="logit"
+)
+
+print(cmp_all)
+```
+
+You may notice that the results do include self comparisons and make both (a, b) and (b, a) comparisons. This way, it is possible to use `cross_compare_loop()` to compare two distinct list of models.
+
+However, if you are just comparing between models within the same list, only combination (and not order) matters, and self-comparison is not needed, you can use `cross_compare_loop2()`, which avoids the repeat:
+
+```{r cross_compare_loop2}
+cmp_all2 <- cross_compare_loop2(models, cmp_func=ecotox_test, 
+  groupings="Age", percentage=50, type="logit"
+)
+
+print(cmp_all2)
+```
+
+## Cross compare two sets of models
+
+As mentioned above, `cross_compare_loop()` can also be used to cross compare two distinct sets of models. As an example, suppose we want to compare models where `Rep` is pulled together with those where each label of `Exp` is separately modeled. We first create two sets of models:
+
+```{r two_model_lists}
+models_sep <- model_loop(toxData, c("Species", "Age", "Rep"), 
+    cbind(Alive, Dead) ~ log10(Temp), modeler=glm, family=binomial
+)
+models_pool <- model_loop(toxData, c("Species", "Age"), 
+    cbind(Alive, Dead) ~ log10(Temp), modeler=glm, family=binomial
+)
+```
+
+Before we run `cross_compare_loop()` we need to deal with one technical problem, namely, `cross_compare_loop()` assumes that the `category_values` of each model from the two sets are compatible. But here models from `model_pool` only has 2 values while models from `models_sep` has 3. For example,
+
+```{r check_category_sep}
+attr(models_sep[["Littoraria ardouiniana"]][["3"]][["1"]], "category_values")
+```
+
+```{r check_category_pool}
+attr(models_pool[["Littoraria ardouiniana"]][["3"]], "category_values")
+```
+
+A way out of this problem is to simply assign `NA` as the category value of `Exp` for each model in `models_pool`. To make this fix easier, `model_loops` provide a convenient function `recurse_append_attr` (there is also `recurse_prepend_attr`), which in this case can be used as follows:
+
+```{r recurse_append_attr}
+models_pool <- recurse_append_attr(models_pool, "category_keys", "Rep")
+models_pool <- recurse_append_attr(models_pool, "category_values", NA)
+```
+
+Now let's check the result:
+
+```{r recheck_category_pool}
+attr(models_pool[["Littoraria ardouiniana"]][["3"]], "category_values")
+```
+With this we can finally make the cross comparison, which is done by calling `cross_compare_loop()` with non-NULL value of `cmp_models`:
+
+```{r cross_compare_two_model_lists}
+cross_compare_loop(models_sep, ecotox_test, groupings=c("Age", "Treatment"), cmp_models=models_pool, percentage=50, type="logit")
+```
+
+[^1]: Note that in the named list of models all names are string, so (e.g.,) we extract the age = 3 model with `[["3"]]`. In contrast, the "category_values" attribute of the models retains the original data type from the data.frame, so that the "age" value in the attribute is the *integer* 3.
+
+[^2]: In this example we see that the compare function `cmp_func` can produce multiple rows instead of a single row. The same holds true for the extractor in `extract_loop()`.
