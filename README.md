@@ -24,4 +24,4 @@ In addition to the functions appearing in the above flow chart, `model_loops.r` 
 
 ## Example
 
-An example for using `model_loop.r` (and the associated data) can be found in the [example/](example) subfolder. The resulting html output can be found under the `docs` folder as [model_loops_example.html](docs/model_loops_example.html).
+An example for using `model_loop.r` (and the associated data) can be found in the [example/](example) subfolder. The resulting html output can be found under the `docs` folder as [model_loops_example.html]( https://htmlpreview.github.io/?[ docs/model_loops_example.html](https://htmlpreview.github.io/?https://github.com/winghoko/r-model-loop/blob/main/docs/model_loops_example.html)).
