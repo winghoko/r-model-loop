@@ -21,3 +21,7 @@ Basically, start by using `model_loop()` (or `model_loop2()`, discussed below) t
 Compared to `model_loop()`, `model_loop2()` uses model calls that better resemble interactive calls, which could be useful if there is any need to reproduce the model call later on. However, `model_loop2()` also introduces a dependency to the `rlang` package, which some may prefer to avoid.
 
 In addition to the functions appearing in the above flow chart, `model_loops.r` also include convenience functions `recurse_append_attr()` and `recurse_prepand_attr()`, `nest_model_into()`, and `nest_model_list()`.
+
+## Example
+
+An example for using `model_loop.r` (and the associated data) can be found in the [example/](example) subfolder. The resulting html output can be found under the `docs` folder as [model_loops_example.html](docs/model_loops_example.html).
