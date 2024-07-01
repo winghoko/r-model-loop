@@ -362,7 +362,9 @@ extract_loop <- function(
     extraction <- extractor(model_list, ...)
     keys <- as.data.frame(attr(model_list, "category_values"))
     n <- nrow(extraction)
-    if (!is.null(n)) keys <- keys[rep(1, n), ]
+    if (!is.null(n) && n > 1){
+      keys <- as.data.frame(keys[rep(1, n), ])
+    }
     colnames(keys) <- attr(model_list, "category_keys")
     rownames(keys) <- NULL
 
@@ -421,7 +423,10 @@ predict_loop <- function(
 
     prediction <- predictor(model_list, new_data, ...)
     keys <- as.data.frame(attr(model_list, "category_values"))
-    keys <- keys[rep(1, nrow(new_data)), ]
+    n <- nrow(new_data) 
+    if (n > 1){
+      keys <- as.data.frame(keys[rep(1, n), ])
+    }
     new_out_df <- cbind(keys, new_data)
     cols <- append(attr(model_list, "category_keys"), colnames(new_data))
     colnames(new_out_df) <- cols
@@ -522,14 +527,14 @@ compare_loop <- function(
     }
 
     new_df <- as.data.frame(labels_values)
-    colnames(new_df) <- labels_names
 
     cmp_result <- cmp_func(model_list, base_model, ...)
 
     n <- nrow(cmp_result)
-    if (!is.null(n)) {
-      new_df <- new_df[rep(1, n), ]
+    if (!is.null(n) && n > 1) {
+      new_df <- as.data.frame(new_df[rep(1, n), ])
     }
+    colnames(new_df) <- labels_names
     rownames(new_df) <- NULL
 
     new_df <- cbind(new_df, cmp_result)
