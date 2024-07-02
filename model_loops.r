@@ -74,6 +74,9 @@ recurse_append_attr <- function(in_list, label, value) {
 #' @param modeler - The function used to perform the modeling, e.g., `lm`
 #'   and `glm`. The modeler should take `formula` as the first argument
 #'   and subsetted `data` as second argument.
+#' @param verbose - If TRUE, prints the category values in use every time
+#'   before the modeler is called. Can be useful to identify which modeler
+#'   call throws a warning.
 #' @param ... - Additional arguments are passed to the modeler.
 #' @returns a (possibly nested) list containing model objects returned
 #'   by the modeler. Each model object has 2 additional attributes:
@@ -129,6 +132,9 @@ model_loop <- function(
 #' @param modeler - The function used to perform the modeling, e.g., `lm`
 #'   and `glm`. The modeler should take `formula` as the first argument
 #'   and subsetted `data` as second argument.
+#' @param verbose - If TRUE, prints the category values in use every time
+#'   before the modeler is called. Can be useful to identify which modeler
+#'   call throws a warning.
 #' @param ... - Additional arguments are passed to the modeler.
 #' @returns a (possibly nested) list containing model objects returned
 #'   by the modeler. Each model object has 2 additional attributes:
