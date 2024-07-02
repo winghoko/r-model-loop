@@ -74,6 +74,9 @@ recurse_append_attr <- function(in_list, label, value) {
 #' @param modeler - The function used to perform the modeling, e.g., `lm`
 #'   and `glm`. The modeler should take `formula` as the first argument
 #'   and subsetted `data` as second argument.
+#' @param verbose - If TRUE, prints the category values in use every time
+#'   before the modeler is called. Can be useful to identify which modeler
+#'   call throws a warning.
 #' @param ... - Additional arguments are passed to the modeler.
 #' @returns a (possibly nested) list containing model objects returned
 #'   by the modeler. Each model object has 2 additional attributes:
@@ -83,32 +86,37 @@ recurse_append_attr <- function(in_list, label, value) {
 #'   the nested list is named by the value the category that the list is
 #'   enumerating through.
 #'
-model_loop <- function(data, categories, formula, modeler = glm, ...) {
+model_loop <- function(
+    data, categories, formula, modeler = glm, verbose=FALSE, ...
+) {
 
-  if (length(categories) == 0) { # base case
+  schema <- unique(data[categories])
 
+  if (nrow(schema) == 0 || ncol(schema) == 0) {
     model <- modeler(formula, data, ...)
-    attr(model, "category_keys") <- character(0) # to be filled later
-    attr(model, "category_values") <- list() # to be filled later
-    return(model)
-
-  } else { # recurse case
-
-    cat_used <- categories[[1]]
-    cat_remain <- categories[-1]
-    cat_values <- unique(data[[cat_used]])
-    out_list <- list()
-    all_data <- data
-    for (val in cat_values){
-      data <- all_data[all_data[[cat_used]] == val, ] # subset-ing
-      in_list <- model_loop(data, cat_remain, formula, modeler, ...)
-      in_list <- recurse_prepend_attr(in_list, "category_keys", cat_used)
-      in_list <- recurse_prepend_attr(in_list, "category_values", val)
-      out_list <- append(out_list, list(in_list))
-    }
-    names(out_list) <- as.character(cat_values)
-    return(out_list)
+    return(list(model))
   }
+
+  out_list <- list()
+  m <- nrow(schema)
+  n <- length(categories)
+  for (i in seq(1, m)) {
+    sub_data <- data
+    for (j in seq(1, n)){
+      sub_data <- sub_data[sub_data[[categories[j]]] == schema[[i, j]], ]
+    }
+    if (verbose){
+      cat_args = c("category values used:", schema[i, ], "\n")
+      do.call(cat, cat_args)
+    }
+    model <- modeler(formula, sub_data, ...)
+    attr(model, "category_keys") <- categories
+    attr(model, "category_values") <- as.list(schema[i, ])
+    out_list <- append(out_list, list(model))
+  }
+  
+  out_list <- nest_model_list(out_list)
+  return(out_list)
 }
 
 #' A variation of `model_loop()` that requires the `rlang` package in an
@@ -124,6 +132,9 @@ model_loop <- function(data, categories, formula, modeler = glm, ...) {
 #' @param modeler - The function used to perform the modeling, e.g., `lm`
 #'   and `glm`. The modeler should take `formula` as the first argument
 #'   and subsetted `data` as second argument.
+#' @param verbose - If TRUE, prints the category values in use every time
+#'   before the modeler is called. Can be useful to identify which modeler
+#'   call throws a warning.
 #' @param ... - Additional arguments are passed to the modeler.
 #' @returns a (possibly nested) list containing model objects returned
 #'   by the modeler. Each model object has 2 additional attributes:
@@ -133,7 +144,9 @@ model_loop <- function(data, categories, formula, modeler = glm, ...) {
 #'   the nested list is named by the value the category that the list is
 #'   enumerating through.
 #'
-model_loop2 <- function(data, categories, formula, modeler = glm, ...) {
+model_loop2 <- function(
+    data, categories, formula, modeler = glm, verbose=FALSE, ...
+) {
 
   d_expr <- rlang::enexpr(data)
   f_expr <- rlang::enexpr(formula)
@@ -157,6 +170,9 @@ model_loop2 <- function(data, categories, formula, modeler = glm, ...) {
       )
       dd_expr <- rlang::expr((!!d_expr)[!!i_expr, ])
       call_expr <- rlang::expr((!!m_expr)(!!f_expr, !!dd_expr, !!!e_exprs))
+      if (verbose){
+        rlang::exec(cat, "category values used:", !!!schema[i, ], "\n")
+      }
       model <- eval(call_expr)
       attr(model, "category_keys") <- categories
       attr(model, "category_values") <- as.list(schema[i, ])
@@ -174,6 +190,9 @@ model_loop2 <- function(data, categories, formula, modeler = glm, ...) {
       }
       dd_expr <- rlang::expr((!!d_expr)[!!i_expr, ])
       call_expr <- rlang::expr((!!m_expr)(!!f_expr, !!dd_expr, !!!e_exprs))
+      if (verbose){
+        rlang::exec(cat, "category values used:", !!!schema[i, ], "\n")
+      }
       model <- eval(call_expr)
       attr(model, "category_keys") <- categories
       attr(model, "category_values") <- as.list(schema[i, ])
